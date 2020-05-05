@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Open the stash PR for the given commit
+
+if [ $# == 0 ]; then
+  # No args, use the current HEAD
+  merge=$(git-find-merge)
+elif [ $# == 1 ]; then
+  # Passed a commit, try to find its merge
+  merge=$(git-find-merge ${1})
+  if [ "${merge}" == "" ]; then
+    # Failing that, maybe the commit was a merge
+    merge=${1}
+  fi
+else
+  echo "Open the stash PR for the given commit"
+  echo ""
+  echo "Usage: $(basename "${0}") <sha>"
+  echo "  sha: If empty, use the HEAD commit"
+  echo ""
+  echo "NOTE: The PR must have already been merged"
+  exit 1
+fi
+
+repo_url=$(git config remote.origin.url | sed -e 's/^git@\(.*\):\(.*\)$/git:\/\/\1\/\2/' | sed 's/^.*\/\/\(.*\).git$/\1/' | sed -e 's/\git@//')
+project=$(echo $repo_url | awk -F '/' '{ print $(NF-1) }')
+repo=$(echo $repo_url | awk -F '/' '{ print $(NF) }')
+pr=$(git log -n1 ${merge} | grep "Merge pull request #" | head -n 1 | sed  's%^.*Merge pull request #\([[:digit:]]*\).*%\1%')
+
+if [ "$pr" == "" ]; then
+  echo "Could not find PR # for ${merge}"
+  exit 1
+fi
+
+url="https://cavgit.sqcorp.co/projects/$project/repos/$repo/pull-requests/$pr/overview"
+echo $url
+open $url
+exit 0
